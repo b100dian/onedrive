@@ -83,7 +83,7 @@ install -d -m 0755 %{buildroot}%{_localstatedir}/log/%{name}
 /usr/share/doc/onedrive/SharePoint-Shared-Libraries.md
 /usr/share/doc/onedrive/USAGE.md
 /usr/share/doc/onedrive/advanced-usage.md
-
+/usr/share/doc/onedrive/config
 
 %config(noreplace) %{_sysconfdir}/%{name}
 %config(noreplace) %{_sysconfdir}/logrotate.d/%{name}
