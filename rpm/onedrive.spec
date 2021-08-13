@@ -34,7 +34,7 @@ Summary:        Client for One Drive Service for Linux
 License:        GPL-3.0-only
 Group:          Productivity/Networking/Other
 URL:            https://github.com/abraunegg/onedrive/
-Source0:        %{name}-%{version}.tar
+Source0:        %{name}-%{version}.tar.gz
 %if %{with dcompiler_dmd}
 BuildRequires:  dmd
 BuildRequires:  phobos-devel-static
