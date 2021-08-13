@@ -16,7 +16,7 @@
 # Please submit bugfixes or comments via https://bugs.opensuse.org/
 #
 
-
+%define _unitdir /usr/lib/systemd/system
 %{!?_userunitdir: %{expand: %%global _userunitdir %{_unitdir}/../user}}
 %define docdir %{_defaultdocdir}/%{name}
 
