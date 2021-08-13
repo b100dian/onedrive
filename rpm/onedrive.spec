@@ -70,26 +70,10 @@ make %{?_smp_mflags} %{name}
 install -D -m 0644 config %{buildroot}%{_sysconfdir}/%{name}/%{name}.conf
 install -d -m 0755 %{buildroot}%{_localstatedir}/log/%{name}
 
-%pre
-%service_add_pre %{name}@.service
-%service_add_pre %{name}.service
-
-%post
-%service_add_post %{name}@.service
-%service_add_post %{name}.service
-
-%preun
-%service_del_preun %{name}@.service
-%service_del_preun %{name}.service
-
-%postun
-%service_del_postun %{name}@.service
-%service_del_postun %{name}.service
-
 %files
 %defattr(-,root,root)
 %license LICENSE
-%doc USAGE.md SharePoint-Shared-Libraries.md INSTALL.md Docker.md CHANGELOG.md config README.md BusinessSharedFolders.md LICENSE advanced-usage.md
+%doc CHANGELOG.md config README.md LICENSE
 %config(noreplace) %{_sysconfdir}/%{name}
 %config(noreplace) %{_sysconfdir}/logrotate.d/%{name}
 %{_bindir}/%{name}
