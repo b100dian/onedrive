@@ -72,10 +72,31 @@ install -D -m 0644 config %{buildroot}%{_sysconfdir}/%{name}/%{name}.conf
 install -d -m 0755 %{buildroot}%{_localstatedir}/log/%{name}
 
 %files
+/usr/share/icons/hicolor/scalable/places/onedrive.svg
+/usr/share/doc/onedrive/LICENSE
+/usr/share/doc/onedrive/advanced-usage.md
+/usr/share/doc/onedrive/application-config-options.md
+/usr/share/doc/onedrive/application-security.md
+/usr/share/doc/onedrive/business-shared-items.md
+/usr/share/doc/onedrive/changelog.md
+/usr/share/doc/onedrive/client-architecture.md
+/usr/share/doc/onedrive/config
+/usr/share/doc/onedrive/contributing.md
+/usr/share/doc/onedrive/docker.md
+/usr/share/doc/onedrive/install.md
+/usr/share/doc/onedrive/known-issues.md
+/usr/share/doc/onedrive/national-cloud-deployments.md
+/usr/share/doc/onedrive/podman.md
+/usr/share/doc/onedrive/privacy-policy.md
+/usr/share/doc/onedrive/readme.md
+/usr/share/doc/onedrive/server-side-filtering-limitations.md
+/usr/share/doc/onedrive/sharepoint-libraries.md
+/usr/share/doc/onedrive/terms-of-service.md
+/usr/share/doc/onedrive/ubuntu-package-install.md
+/usr/share/doc/onedrive/usage.md
+/usr/share/doc/onedrive/webhooks.md
 %defattr(-,root,root)
 %license LICENSE
-/usr/share/icons/hicolor/scalable/places/onedrive.svg
-%doc readme.md LICENSE changelog.md docs/*.md config
 %config(noreplace) %{_sysconfdir}/%{name}
 %config(noreplace) %{_sysconfdir}/logrotate.d/%{name}
 %{_bindir}/%{name}
