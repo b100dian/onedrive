@@ -18,13 +18,17 @@ docdir = $(datadir)/doc/$(package)
 VPATH = @srcdir@
 INSTALL = @INSTALL@
 
+# Icon install locations (system-wide hicolor theme)
+ICON_THEMEDIR      = $(datadir)/icons/hicolor
+ICON_PLACES_DIR    = $(ICON_THEMEDIR)/scalable/places
+ICON_SOURCE_SVG    = contrib/images/onedrive.svg
+ICON_TARGET_SVG    = onedrive.svg
+
 NOTIFICATIONS = @NOTIFICATIONS@
 HAVE_SYSTEMD = @HAVE_SYSTEMD@
 systemduserunitdir = @systemduserunitdir@
 systemdsystemunitdir = @systemdsystemunitdir@
-curl_LIBS = @curl_LIBS@
-sqlite_LIBS = @sqlite_LIBS@
-notify_LIBS = @notify_LIBS@
+all_libs = @curl_LIBS@ @sqlite_LIBS@ @dbus_LIBS@ @notify_LIBS@ @bsd_inotify_LIBS@ @dynamic_linker_LIBS@
 COMPLETIONS = @COMPLETIONS@
 BASH_COMPLETION_DIR = @BASH_COMPLETION_DIR@
 ZSH_COMPLETION_DIR = @ZSH_COMPLETION_DIR@
@@ -32,33 +36,32 @@ FISH_COMPLETION_DIR = @FISH_COMPLETION_DIR@
 DEBUG = @DEBUG@
 
 DC = @DC@
-DC_TYPE = @DC_TYPE@
 DCFLAGS = @DCFLAGS@
-DCFLAGS += -w -g -O -J.
+DEBUG_DCFLAGS = @DEBUG_DCFLAGS@
+RELEASE_DCFLAGS = @RELEASE_DCFLAGS@
+VERSION_DCFLAG = @VERSION_DCFLAG@
+LINKER_DCFLAG = @LINKER_DCFLAG@
+OUTPUT_DCFLAG = @OUTPUT_DCFLAG@
+WERROR_DCFLAG = @WERROR_DCFLAG@
+
+DCFLAGS += $(WERROR_DCFLAG)
 ifeq ($(DEBUG),yes)
-ifeq ($(DC_TYPE),dmd)
-DCFLAGS += -debug -gs
+DCFLAGS += $(DEBUG_DCFLAGS)
 else
-DCFLAGS += -d-debug -gc
-endif
+DCFLAGS += $(RELEASE_DCFLAGS)
 endif
 
 ifeq ($(NOTIFICATIONS),yes)
-NOTIF_VERSIONS=-version=NoPragma -version=NoGdk -version=Notifications
-# support ldc2 which needs -d prefix for version specification
-ifeq ($(DC_TYPE),ldc)
-        NOTIF_VERSIONS := $(addprefix -d,$(NOTIF_VERSIONS))
-endif
-DCFLAGS += $(NOTIF_VERSIONS)
+GUI_NOTIFICATIONS = $(addprefix $(VERSION_DCFLAG)=,NoPragma NoGdk Notifications)
 endif
 
 system_unit_files = contrib/systemd/onedrive@.service
 user_unit_files = contrib/systemd/onedrive.service
 
-DOCFILES = README.md config LICENSE CHANGELOG.md docs/Docker.md docs/INSTALL.md docs/SharePoint-Shared-Libraries.md docs/USAGE.md docs/BusinessSharedFolders.md docs/advanced-usage.md
+DOCFILES = readme.md config LICENSE changelog.md docs/advanced-usage.md docs/application-config-options.md docs/application-security.md docs/business-shared-items.md docs/client-architecture.md docs/contributing.md docs/docker.md docs/install.md docs/national-cloud-deployments.md docs/podman.md docs/privacy-policy.md docs/sharepoint-libraries.md docs/terms-of-service.md docs/ubuntu-package-install.md docs/usage.md docs/known-issues.md docs/webhooks.md docs/server-side-filtering-limitations.md
 
 ifneq ("$(wildcard /etc/redhat-release)","")
-RHEL = $(shell cat /etc/redhat-release | grep -E "(Red Hat Enterprise Linux Server|CentOS)" | wc -l)
+RHEL = $(shell cat /etc/redhat-release | grep -E "(Red Hat Enterprise Linux|CentOS|AlmaLinux)" | wc -l)
 RHEL_VERSION = $(shell rpm --eval "%{rhel}")
 else
 RHEL = 0
@@ -66,19 +69,24 @@ RHEL_VERSION = 0
 endif
 
 SOURCES = \
-	src/config.d \
-	src/itemdb.d \
-	src/log.d \
 	src/main.d \
-	src/monitor.d \
-	src/onedrive.d \
-	src/qxor.d \
-	src/selective.d \
-	src/sqlite.d \
-	src/sync.d \
-	src/upload.d \
+	src/config.d \
+	src/log.d \
 	src/util.d \
-	src/progress.d
+	src/qxor.d \
+	src/curlEngine.d \
+	src/onedrive.d \
+	src/webhook.d \
+	src/sync.d \
+	src/itemdb.d \
+	src/sqlite.d \
+	src/clientSideFiltering.d \
+	src/monitor.d \
+	src/arsd/cgi.d \
+	src/xattr.d \
+	src/intune.d \
+	src/socketio.d \
+	src/curlWebsockets.d
 
 ifeq ($(NOTIFICATIONS),yes)
 SOURCES += src/notifications/notify.d src/notifications/dnotify.d
@@ -91,10 +99,9 @@ clean:
 	rm -rf autom4te.cache
 	rm -f config.log config.status
 
-# also remove files generated via ./configure
+# Remove files generated via ./configure
 distclean: clean
-	rm -f Makefile contrib/pacman/PKGBUILD contrib/spec/onedrive.spec onedrive.1 \
-	      $(system_unit_files) $(user_unit_files)
+	rm -f Makefile contrib/pacman/PKGBUILD contrib/spec/onedrive.spec onedrive.1 $(system_unit_files) $(user_unit_files)
 
 onedrive: $(SOURCES)
 	if [ -f .git/HEAD ] ; then \
@@ -102,16 +109,22 @@ onedrive: $(SOURCES)
 	else \
 		echo $(version) > version ; \
 	fi
-	$(DC) $(DCFLAGS) $(addprefix -L,$(curl_LIBS)) $(addprefix -L,$(sqlite_LIBS)) $(addprefix -L,$(notify_LIBS)) -L-ldl $(SOURCES) -of$@
+	$(DC) -J. $(GUI_NOTIFICATIONS) $(DCFLAGS) $^ $(addprefix $(LINKER_DCFLAG),$(all_libs)) $(OUTPUT_DCFLAG)$@
 
 install: all
-	$(INSTALL) -D onedrive $(DESTDIR)$(bindir)/onedrive
-	$(INSTALL) -D onedrive.1 $(DESTDIR)$(mandir)/man1/onedrive.1
-	$(INSTALL) -D -m 644 contrib/logrotate/onedrive.logrotate $(DESTDIR)$(sysconfdir)/logrotate.d/onedrive
+	mkdir -p $(DESTDIR)$(bindir)
+	$(INSTALL) onedrive $(DESTDIR)$(bindir)/onedrive
+	mkdir -p $(DESTDIR)$(mandir)/man1
+	$(INSTALL) -m 0644 onedrive.1 $(DESTDIR)$(mandir)/man1/onedrive.1
+	mkdir -p $(DESTDIR)$(sysconfdir)/logrotate.d
+	$(INSTALL) -m 0644 contrib/logrotate/onedrive.logrotate $(DESTDIR)$(sysconfdir)/logrotate.d/onedrive
 	mkdir -p $(DESTDIR)$(docdir)
-	$(INSTALL) -D -m 644 $(DOCFILES) $(DESTDIR)$(docdir)
+	for file in $(DOCFILES); do \
+		$(INSTALL) -m 0644 $$file $(DESTDIR)$(docdir); \
+	done
 ifeq ($(HAVE_SYSTEMD),yes)
-	$(INSTALL) -d -m 0755 $(DESTDIR)$(systemduserunitdir) $(DESTDIR)$(systemdsystemunitdir)
+	mkdir -p $(DESTDIR)$(systemduserunitdir)
+	mkdir -p $(DESTDIR)$(systemdsystemunitdir)
 ifeq ($(RHEL),1)
 	$(INSTALL) -m 0644 $(system_unit_files) $(DESTDIR)$(systemdsystemunitdir)
 	$(INSTALL) -m 0644 $(user_unit_files) $(DESTDIR)$(systemdsystemunitdir)
@@ -121,15 +134,27 @@ else
 endif
 else
 ifeq ($(RHEL_VERSION),6)
-	install -D contrib/init.d/onedrive.init $(DESTDIR)/etc/init.d/onedrive
-	install -D contrib/init.d/onedrive_service.sh $(DESTDIR)$(bindir)/onedrive_service.sh
-endif	
+	$(INSTALL) contrib/init.d/onedrive.init $(DESTDIR)/etc/init.d/onedrive
+	$(INSTALL) contrib/init.d/onedrive_service.sh $(DESTDIR)$(bindir)/onedrive_service.sh
+endif
 endif
 ifeq ($(COMPLETIONS),yes)
-	$(INSTALL) -D -m 644 contrib/completions/complete.zsh $(DESTDIR)$(ZSH_COMPLETION_DIR)/_onedrive
-	$(INSTALL) -D -m 644 contrib/completions/complete.bash $(DESTDIR)$(BASH_COMPLETION_DIR)/onedrive
-	$(INSTALL) -D -m 644 contrib/completions/complete.fish $(DESTDIR)$(FISH_COMPLETION_DIR)/onedrive.fish
+	mkdir -p $(DESTDIR)$(ZSH_COMPLETION_DIR)
+	$(INSTALL) -m 0644 contrib/completions/complete.zsh $(DESTDIR)$(ZSH_COMPLETION_DIR)/_onedrive
+	mkdir -p $(DESTDIR)$(BASH_COMPLETION_DIR)
+	$(INSTALL) -m 0644 contrib/completions/complete.bash $(DESTDIR)$(BASH_COMPLETION_DIR)/onedrive
+	mkdir -p $(DESTDIR)$(FISH_COMPLETION_DIR)
+	$(INSTALL) -m 0644 contrib/completions/complete.fish $(DESTDIR)$(FISH_COMPLETION_DIR)/onedrive.fish
 endif
+	# --- OneDrive folder icon (hicolor) ---
+	mkdir -p $(DESTDIR)$(ICON_PLACES_DIR)
+	$(INSTALL) -m 0644 $(ICON_SOURCE_SVG) $(DESTDIR)$(ICON_PLACES_DIR)/$(ICON_TARGET_SVG)
+	# Refresh icon cache only when installing to the live system (not during staged DESTDIR installs)
+	# and only if the theme directory is a proper theme (has index.theme)
+	if [ -z "$(DESTDIR)" ] && command -v gtk-update-icon-cache >/dev/null 2>&1 \
+	   && [ -f "$(ICON_THEMEDIR)/index.theme" ]; then \
+		gtk-update-icon-cache -q "$(ICON_THEMEDIR)"; \
+	fi
 
 
 uninstall:
@@ -155,5 +180,10 @@ ifeq ($(COMPLETIONS),yes)
 	rm -f $(DESTDIR)$(BASH_COMPLETION_DIR)/onedrive
 	rm -f $(DESTDIR)$(FISH_COMPLETION_DIR)/onedrive.fish
 endif
-
-
+	# --- OneDrive folder icon (hicolor) ---
+	rm -f $(DESTDIR)$(ICON_PLACES_DIR)/$(ICON_TARGET_SVG)
+	# Refresh icon cache if removing from the live system and index.theme exists
+	if [ -z "$(DESTDIR)" ] && command -v gtk-update-icon-cache >/dev/null 2>&1 \
+	   && [ -f "$(ICON_THEMEDIR)/index.theme" ]; then \
+		gtk-update-icon-cache -q "$(ICON_THEMEDIR)"; \
+	fi

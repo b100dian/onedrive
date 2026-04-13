@@ -1,18 +1,19 @@
 module dnotify;
 
+import std.path;
+import std.file;
+
 private {
     import std.string : toStringz;
     import std.conv : to;
     import std.traits : isPointer, isArray;
     import std.variant : Variant;
     import std.array : appender;
-    
     import deimos.notify.notify;
 }
 
 public import deimos.notify.notify : NOTIFY_EXPIRES_DEFAULT, NOTIFY_EXPIRES_NEVER,
                                      NotifyUrgency;
-
 
 version(NoPragma) {
 } else {
@@ -79,11 +80,11 @@ void init(in char[] name) {
 alias notify_is_initted is_initted;
 alias notify_uninit uninit;
 
-static this() {
-    init(__FILE__);
+shared static this() {
+	init(baseName(thisExePath()));
 }
 
-static ~this() {
+shared static ~this() {
     uninit();
 }
 
@@ -311,7 +312,7 @@ version(TestMain) {
     
     void main() {
         writeln(get_app_name());
-        set_app_name("bla");
+        set_app_name("blargh");
         writeln(get_app_name());
         writeln(get_server_caps());
         writeln(get_server_info());

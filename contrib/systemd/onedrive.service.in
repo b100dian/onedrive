@@ -1,14 +1,31 @@
 [Unit]
-Description=OneDrive Free Client
+Description=OneDrive Client for Linux
 Documentation=https://github.com/abraunegg/onedrive
 After=network-online.target
 Wants=network-online.target
 
 [Service]
+# Commented out hardenings are disabled because they may not work out of the box on your distribution
+# If you know what you are doing please try to enable them.
+
+ProtectSystem=full
+#PrivateUsers=true
+#PrivateDevices=true
+ProtectHostname=true
+#ProtectClock=true
+ProtectKernelTunables=true
+#ProtectKernelModules=true
+#ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictRealtime=true
+ExecStartPre=/bin/sh -c 'sleep 15'
 ExecStart=@prefix@/bin/onedrive --monitor
 Restart=on-failure
 RestartSec=3
-RestartPreventExitStatus=3
+# Do not restart the service if a --resync is required which is done via a 126 exit code
+RestartPreventExitStatus=126
+# Time to wait for the service to stop gracefully before forcefully terminating it
+TimeoutStopSec=90
 
 [Install]
 WantedBy=default.target

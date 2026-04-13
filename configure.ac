@@ -4,12 +4,13 @@ dnl Licensed GPL v3 or later
 
 dnl How to make a release
 dnl - increase the version number in the AC_INIT call below
+dnl - change PACKAGE_DATE to 'Month YYYY' to ensure man page has the correct date
 dnl - run autoconf which generates configure
 dnl - commit the changed files (configure.ac, configure)
 dnl - tag the release
 
 AC_PREREQ([2.69])
-AC_INIT([onedrive],[v2.4.14-dev], [https://github.com/abraunegg/onedrive], [onedrive])
+AC_INIT([onedrive],[v2.5.10], [https://github.com/abraunegg/onedrive], [onedrive])
 AC_CONFIG_SRCDIR([src/main.d])
 
 
@@ -20,16 +21,19 @@ dnl necessary programs: install, pkg-config
 AC_PROG_INSTALL
 PKG_PROG_PKG_CONFIG
 
+PACKAGE_DATE="January 2026"
+AC_SUBST([PACKAGE_DATE])
+
 dnl Determine D compiler
 dnl we check for dmd, dmd2, and ldc2 in this order
 dnl furthermore, we set DC_TYPE to either dmd or ldc and export this into the
 dnl Makefile so that we can adjust command line arguments
-AC_CHECK_PROGS([DC], [dmd ldmd2 ldc2], NOT_FOUND)
+AC_CHECK_PROGS([DC], [dmd ldmd2 ldc2 gdmd gdc], NOT_FOUND)
 DC_TYPE=
 case $(basename $DC) in
-        dmd) DC_TYPE=dmd ;;
-        ldmd2) DC_TYPE=dmd ;;
-        ldc2) DC_TYPE=ldc ;;
+        *ldc2*) DC_TYPE=ldc ;;
+        *gdc*) DC_TYPE=gdc ;;
+        *dmd*) DC_TYPE=dmd ;;
         NOT_FOUND) AC_MSG_ERROR(Could not find any compatible D compiler, 1)
 esac
 
@@ -96,23 +100,38 @@ AS_IF([test "$DO_VERSION_CHECK" = "1"],
 AC_MSG_CHECKING([version of D compiler])
 # check for valid versions
 case $(basename $DC) in
-	ldmd2|ldc2)
+	*ldmd2*|*ldc2*)
 		# LDC - the LLVM D compiler (1.12.0): ...
 		VERSION=`$DC --version`
 		# remove  everything up to first (
 		VERSION=${VERSION#* (}
-		# remove everthing after ):
+		# remove everything after ):
 		VERSION=${VERSION%%):*}
 		# now version should be something like L.M.N
-		MINVERSION=1.12.0
+		MINVERSION=1.20.1
 		;;
-	dmd)
+	*gdmd*|*gdc*)
+		# Both gdmd and gdc print the same version information
+		VERSION=`${DC} --version | head -n1`
+		# Some examples of output:
+		# gdc (Gentoo 14.2.1_p20250301 p8) 14.2.1 20250301
+		# gcc (GCC) 14.2.1 20250207 # Arch
+		# gdc (GCC) 14.2.1 20250110 (Red Hat 14.2.1-7)
+		# gdc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0
+		VERSION=${VERSION#gdc }
+		# VERSION=(...) VER DATE ...
+		VERSION=${VERSION#*) }
+		# VERSION=VER DATE ...
+		VERSION=${VERSION%% *}
+		MINVERSION=15
+		;;
+	*dmd*)
 		# DMD64 D Compiler v2.085.1\n...
 		VERSION=`$DC --version | tr '\n' ' '`
 		VERSION=${VERSION#*Compiler v}
 		VERSION=${VERSION%% *}
 		# now version should be something like L.M.N
-		MINVERSION=2.083.1
+		MINVERSION=2.091.1
 		;;
 esac
 
@@ -128,22 +147,68 @@ fi
 
 
 
-AC_SUBST([DC_TYPE])
 dnl In case the environment variable DCFLAGS is set, we export it to the
 dnl generated Makefile at configure run:
 AC_SUBST([DCFLAGS])
 
-dnl The package date is only used in the man page onedrive.1.in
-dnl we generate onedrive.1 from it during configure run, but we want
-dnl to have the same date, namely the one when the configure script
-dnl was generated from the configure.ac (i.e., on release time).
-dnl this uses a call to the underlying m4 engine to call an external cmd
-PACKAGE_DATE="m4_esyscmd([date "+%B %Y" | tr -d '\n'])" 
-AC_SUBST([PACKAGE_DATE])
+dnl Default flags for each compiler
+case "$DC_TYPE" in
+	dmd)
+		DEBUG_DCFLAGS="-g -debug -gs"
+		RELEASE_DCFLAGS=-O
+		VERSION_DCFLAG=-version
+		LINKER_DCFLAG=-L
+		OUTPUT_DCFLAG=-of
+		WERROR_DCFLAG=-w
+		;;
+	ldc)
+		DEBUG_DCFLAGS="-g -d-debug -gc"
+		RELEASE_DCFLAGS=-O
+		VERSION_DCFLAG=-d-version
+		LINKER_DCFLAG=-L
+		OUTPUT_DCFLAG=-of
+		WERROR_DCFLAG=-w
+		;;
+	gdc)
+		DEBUG_DCFLAGS="-g -fdebug"
+		RELEASE_DCFLAGS=-O
+		VERSION_DCFLAG=-fversion
+		LINKER_DCFLAG=-Wl,
+		OUTPUT_DCFLAG=-o
+		WERROR_DCFLAG=-Werror
+		;;
+esac
+AC_SUBST([DEBUG_DCFLAGS])
+AC_SUBST([RELEASE_DCFLAGS])
+AC_SUBST([VERSION_DCFLAG])
+AC_SUBST([LINKER_DCFLAG])
+AC_SUBST([OUTPUT_DCFLAG])
+AC_SUBST([WERROR_DCFLAG])
 
-dnl Check for required modules: curl and sqlite at the moment
+dnl Check for required modules: curl, sqlite and dbus if required
 PKG_CHECK_MODULES([curl],[libcurl])
 PKG_CHECK_MODULES([sqlite],[sqlite3])
+
+AC_MSG_CHECKING([whether to enable dbus support])
+case "$(uname -s)" in
+  Linux)
+    enable_dbus=yes
+    AC_MSG_RESULT([yes (on Linux)])
+    PKG_CHECK_MODULES([dbus], [dbus-1 >= 1.0],
+      [AC_DEFINE([HAVE_DBUS], [1], [Define if you have dbus-1])]
+      ,
+      [AC_MSG_ERROR([dbus-1 development files not found. Please install dbus-devel (Red Hat), libdbus-1-dev (Debian) or dbus (Arch | Manjaro)])]
+    )
+    ;;
+  *)
+    enable_dbus=no
+    AC_MSG_RESULT([no (not on Linux)])
+    ;;
+esac
+
+AC_SUBST([enable_dbus])
+
+
 
 dnl
 dnl systemd and unit file directories
@@ -162,7 +227,7 @@ dnl value via pkg-config and put it into $def_systemdsystemunitdir
 AS_IF([test "x$with_systemdsystemunitdir" = "xyes" -o "x$with_systemdsystemunitdir" = "xauto"],
       [ dnl true part, so try to determine with pkg-config
         def_systemdsystemunitdir=$($PKG_CONFIG --variable=systemdsystemunitdir systemd)
-        dnl if we cannot find it via pkg-config, *and* the user explicitely passed it in with,
+        dnl if we cannot find it via pkg-config, *and* the user explicitly passed it in with,
         dnl we warn, and in all cases we unset (set to no) the respective variable
         AS_IF([test "x$def_systemdsystemunitdir" = "x"],
               [  dnl we couldn't find the default value via pkg-config
@@ -223,6 +288,46 @@ AS_IF([test "x$enable_notifications" = "xyes"],
       [PKG_CHECK_MODULES(notify,libnotify,,enable_notifications=no)],
       [AC_SUBST([notify_LIBS],"")])
 AC_SUBST([NOTIFICATIONS],$enable_notifications)
+
+dnl
+dnl iNotify Support
+
+# Conditionally set bsd_inotify_LIBS based on the platform
+case "$(uname -s)" in
+    Linux)
+        bsd_inotify_LIBS=""
+        ;;
+    FreeBSD)
+        AS_IF([test "$(uname -U)" -gt 1500060],
+            [bsd_inotify_LIBS=""],
+            [bsd_inotify_LIBS="-L/usr/local/lib -linotify"]
+        )
+        ;;
+    OpenBSD)
+        bsd_inotify_LIBS="-L/usr/local/lib/inotify -linotify"
+        ;;
+    *)
+        bsd_inotify_LIBS=""
+        ;;
+esac
+
+AC_SUBST([bsd_inotify_LIBS])
+
+dnl
+dnl Dynamic Linker Support
+
+# Conditionally set dynamic_linker_LIBS based on the platform
+case "$(uname -s)" in
+    Linux)
+        dynamic_linker_LIBS="-ldl"
+        ;;
+    *)
+        dynamic_linker_LIBS=""
+        ;;
+esac
+
+AC_SUBST([dynamic_linker_LIBS])
+
 
 dnl
 dnl Completion support

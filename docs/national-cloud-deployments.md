@@ -1,11 +1,15 @@
 # How to configure access to specific Microsoft Azure deployments
-In some cases it is a requirement to utilise specific Microsoft Azure cloud deployments to conform with data and security reuqirements that requires data to reside within the geographic borders of that country.
+> [!CAUTION]
+> Before reading this document, please ensure you are running application version [![Version](https://img.shields.io/github/v/release/abraunegg/onedrive)](https://github.com/abraunegg/onedrive/releases) or greater. Use `onedrive --version` to determine what application version you are using and upgrade your client if required.
+
+## Process Overview
+In some cases it is a requirement to utilise specific Microsoft Azure cloud deployments to conform with data and security requirements that requires data to reside within the geographic borders of that country.
 Current national clouds that are supported are:
 *   Microsoft Cloud for US Government
 *   Microsoft Cloud Germany
-*   Azure and Office 365 operated by 21Vianet in China
+*   Azure and Office365 operated by VNET in China
 
-In order to sucessfully use these specific Microsoft Azure deployments, the following steps are required:
+In order to successfully use these specific Microsoft Azure deployments, the following steps are required:
 1. Register an application with the Microsoft identity platform using the Azure portal
 2. Configure the new application with the appropriate authentication scopes
 3. Validate that the authentication / redirect URI is correct for your application registration
@@ -14,7 +18,14 @@ In order to sucessfully use these specific Microsoft Azure deployments, the foll
 6. Authenticate the client
 
 ## Step 1: Register a new application with Microsoft Azure
-1. Log into [Microsoft Azure](https://portal.azure.com/) with your applicable identity
+1. Log into your applicable Microsoft Azure Portal with your applicable Office365 identity:
+
+| National Cloud Environment | Microsoft Azure Portal |
+|---|---|
+| Microsoft Cloud for US Government    | https://portal.azure.com/ | 
+| Microsoft Cloud Germany              | https://portal.azure.com/ | 
+| Azure and Office365 operated by VNET | https://portal.azure.cn/  | 
+
 2. Select 'Azure Active Directory' as the service you wish to configure
 3. Under 'Manage', select 'App registrations' to register a new application
 4. Click 'New registration'
@@ -26,7 +37,8 @@ In order to sucessfully use these specific Microsoft Azure deployments, the foll
 
 ![application_registration_done](./images/application_registration_done.jpg)
 
-**Note:** The Application (client) ID UUID as displayed after client registration, is what is required as the 'application_id' for Step 4 below.
+> [!NOTE]
+> The Application (client) ID UUID as displayed after client registration, is what is required as the 'application_id' for Step 4 below.
 
 ## Step 2: Configure application authentication scopes
 Configure the API permissions as per the following:
@@ -35,9 +47,8 @@ Configure the API permissions as per the following:
 |---|---|---|---|
 | Files.ReadWrite | Delegated | Have full access to user files | No |
 | Files.ReadWrite.All  | Delegated | Have full access to all files user can access | No |
+| Sites.ReadWrite.All   | Delegated | Have full access to all items in all site collections | No |
 | offline_access   | Delegated | Maintain access to data you have given it access to | No |
-| Sites.Read.All   | Delegated | Read items in all site collections | No |
-| Sites.ReadWrite.All   | Delegated | Edit or delete items in all site collections | No |
 
 ![authentication_scopes](./images/authentication_scopes.jpg)
 
@@ -49,12 +60,12 @@ Add the appropriate redirect URI for your Azure deployment:
 A valid entry for the response URI should be one of:
 *   https://login.microsoftonline.us/common/oauth2/nativeclient (Microsoft Cloud for US Government)
 *   https://login.microsoftonline.de/common/oauth2/nativeclient (Microsoft Cloud Germany)
-*   https://login.chinacloudapi.cn/common/oauth2/nativeclient (Azure and Office 365 operated by 21Vianet in China)
+*   https://login.chinacloudapi.cn/common/oauth2/nativeclient (Azure and Office365 operated by VNET in China)
 
 For a single-tenant application, it may be necessary to use your specific tenant id instead of "common":
 *   https://login.microsoftonline.us/example.onmicrosoft.us/oauth2/nativeclient (Microsoft Cloud for US Government)
 *   https://login.microsoftonline.de/example.onmicrosoft.de/oauth2/nativeclient (Microsoft Cloud Germany)
-*   https://login.chinacloudapi.cn/example.onmicrosoft.cn/oauth2/nativeclient (Azure and Office 365 operated by 21Vianet in China)
+*   https://login.chinacloudapi.cn/example.onmicrosoft.cn/oauth2/nativeclient (Azure and Office365 operated by VNET in China)
 
 ## Step 4: Configure the onedrive client to use new application registration
 Update to your 'onedrive' configuration file (`~/.config/onedrive/config`) the following:
@@ -79,7 +90,7 @@ Valid entries are:
 *   USL4 (Microsoft Cloud for US Government)
 *   USL5 (Microsoft Cloud for US Government - DOD)
 *   DE (Microsoft Cloud Germany)
-*   CN (Azure and Office 365 operated by 21Vianet in China)
+*   CN (Azure and Office365 operated by VNET in China)
 
 This will configure your client to use the correct Azure AD and Graph endpoints as per [https://docs.microsoft.com/en-us/graph/deployments](https://docs.microsoft.com/en-us/graph/deployments)
 
@@ -95,7 +106,7 @@ azure_tenant_id = "insert valid entry here"
 
 This will configure your client to use the specified tenant id in its Azure AD and Graph endpoint URIs, instead of "common".
 The tenant id may be the GUID Directory ID (formatted "00000000-0000-0000-0000-000000000000"), or the fully qualified tenant name (e.g. "example.onmicrosoft.us").
-The GUID Directory ID may be located in the Azure administation page as per [https://docs.microsoft.com/en-us/onedrive/find-your-office-365-tenant-id](https://docs.microsoft.com/en-us/onedrive/find-your-office-365-tenant-id). Note that you may need to go to your national-deployment-specific administration page, rather than following the links within that document.
+The GUID Directory ID may be located in the Azure administration page as per [https://docs.microsoft.com/en-us/onedrive/find-your-office-365-tenant-id](https://docs.microsoft.com/en-us/onedrive/find-your-office-365-tenant-id). Note that you may need to go to your national-deployment-specific administration page, rather than following the links within that document.
 The tenant name may be obtained by following the PowerShell instructions on [https://docs.microsoft.com/en-us/onedrive/find-your-office-365-tenant-id](https://docs.microsoft.com/en-us/onedrive/find-your-office-365-tenant-id); it is shown as the "TenantDomain" upon completion of the "Connect-AzureAD" command.
 
 **Example:**
