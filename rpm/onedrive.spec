@@ -74,11 +74,8 @@ install -d -m 0755 %{buildroot}%{_localstatedir}/log/%{name}
 %files
 %defattr(-,root,root)
 %license LICENSE
-
-/usr/share/doc/onedrive/LICENSE
-/usr/share/doc/onedrive/advanced-usage.md
-/usr/share/doc/onedrive/config
-
+/usr/share/icons/hicolor/scalable/places/onedrive.svg
+%doc readme.md LICENSE changelog.md docs/*.md config
 %config(noreplace) %{_sysconfdir}/%{name}
 %config(noreplace) %{_sysconfdir}/logrotate.d/%{name}
 %{_bindir}/%{name}
