@@ -42,6 +42,7 @@ BuildRequires:  phobos-devel-static
 BuildRequires:  ldc
 #BuildRequires:  ldc-phobos-devel
 %endif
+Buildrequires:  dbus-devel
 BuildRequires:  help2man
 BuildRequires:  libcurl-devel
 BuildRequires:  sqlite-devel
