@@ -75,14 +75,7 @@ install -d -m 0755 %{buildroot}%{_localstatedir}/log/%{name}
 %defattr(-,root,root)
 %license LICENSE
 
-/usr/share/doc/onedrive/BusinessSharedFolders.md
-/usr/share/doc/onedrive/CHANGELOG.md
-/usr/share/doc/onedrive/Docker.md
-/usr/share/doc/onedrive/INSTALL.md
 /usr/share/doc/onedrive/LICENSE
-/usr/share/doc/onedrive/README.md
-/usr/share/doc/onedrive/SharePoint-Shared-Libraries.md
-/usr/share/doc/onedrive/USAGE.md
 /usr/share/doc/onedrive/advanced-usage.md
 /usr/share/doc/onedrive/config
 
